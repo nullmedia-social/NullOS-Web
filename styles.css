@@ -1,0 +1,80 @@
+@font-face {
+  font-family: 'Droid Sans Mono';
+  src: url('DroidSansMono.ttf') format('truetype');
+}
+
+body {
+  background-color: #000;
+  color: #fff;
+  font-family: 'Droid Sans Mono', monospace;
+  font-size: 14px;
+  margin: 0;
+  padding: 0.5em;
+}
+
+pre {
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+#ASCIIArtName {
+  line-height: 0.6;
+}
+
+.indent {
+  display: inline-block;
+  width: 0.225em;
+}
+
+#terminal {
+  margin-top: 1em;
+}
+
+#output {
+  white-space: pre-wrap;
+  margin-bottom: 0.2em; /* close lines */
+}
+
+#input-line {
+  display: flex;
+  align-items: center;
+}
+
+.prompt {
+  user-select: none;
+  margin-right: 0.3em;
+  white-space: nowrap;
+}
+
+#terminalInput {
+  outline: none;
+  min-width: 20ch;
+  min-height: 1.2em;
+  padding: 2px 6px;
+  caret-color: transparent;
+  position: relative;
+  white-space: pre;
+  user-select: text;
+  background: transparent;
+  color: inherit;
+  border: 1px solid #555;
+  font-family: 'Droid Sans Mono', monospace;
+  font-size: 14px;
+}
+
+#terminalInput::after {
+  content: "";
+  position: absolute;
+  top: 0.05em;
+  left: calc(var(--caret-pos, 0) + 0.2ch);
+  width: 1.4ch;
+  height: 1.4em;
+  background: #fff;
+  animation: blink 1s steps(1) infinite;
+  pointer-events: none;
+}
+
+@keyframes blink {
+  0%, 50% { opacity: 1; }
+  50.01%, 100% { opacity: 0; }
+}
