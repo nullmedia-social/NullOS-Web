@@ -12,13 +12,8 @@ body {
   padding: 0.5em;
 }
 
-pre {
-  margin: 0;
-  white-space: pre-wrap;
-}
-
 #ASCIIArtName {
-  line-height: 0.6;
+  line-height: 1;
 }
 
 .indent {
