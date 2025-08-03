@@ -1,4 +1,6 @@
 document.addEventListener('DOMContentLoaded', () => {
+	const prompt = document.querySelector('.prompt');
+	let currentDir = '/';
 	const terminalInput = document.getElementById('terminalInput');
 	const output = document.getElementById('output');
 
@@ -9,6 +11,11 @@ document.addEventListener('DOMContentLoaded', () => {
 	const virtualFS = JSON.parse(localStorage.getItem('virtualFS') || '{}');
 	function saveVirtualFS() {
 		localStorage.setItem('virtualFS', JSON.stringify(virtualFS));
+	}
+
+	// Setter for currentDir that updates variable and localStorage
+	function setCurrentDir(newDir) {
+		currentDir = newDir;
 	}
 
 	function updateCaretPos() {
@@ -35,22 +42,23 @@ document.addEventListener('DOMContentLoaded', () => {
 		commandHistory.push(cmd);
 		historyIndex = commandHistory.length;
 
-		// Show input line
+		// Show input line with current directory in prompt
 		const inputLine = document.createElement('div');
-		inputLine.textContent = `root@nullos:/$ ${cmd}`;
+		inputLine.innerHTML = `<span class="prompt">root@nullos:${currentDir}$</span> ${cmd}`;
 		output.appendChild(inputLine);
 
-		// Try to load and run command module, pass virtualFS and saveVirtualFS
+		// Try to load and run command module, pass virtualFS, saveVirtualFS, currentDir, and setCurrentDir
 		try {
 			const module = await import(`./bin/${cmdName}.js`);
 			if (typeof module.default === 'function') {
-				await module.default(args, cmdOutput, virtualFS, saveVirtualFS);
+				await module.default(args, cmdOutput, virtualFS, saveVirtualFS, currentDir, setCurrentDir);
 			} else {
 				cmdOutput(`Error: ${cmdName} is not executable`);
 			}
 		} catch (err) {
 			cmdOutput(`Error: command not found: ${cmdName}`);
 		}
+		prompt.textContent = `root@nullos:${currentDir}$`;
 
 		terminalInput.textContent = '';
 		updateCaretPos();

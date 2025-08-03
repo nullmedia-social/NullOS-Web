@@ -11,6 +11,7 @@
   "/bin": [
     "assets",
     "cat.js",
+    "cd.js",
     "clear.js",
     "echo.js",
     "edit.js",
