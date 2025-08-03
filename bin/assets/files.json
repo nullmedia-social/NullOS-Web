@@ -1,0 +1,29 @@
+{
+  "/": [
+    "index.html",
+    "logo.png",
+    "nullos.html",
+    "script.js",
+    "styles.css",
+    "bin",
+    "fonts"
+  ],
+  "/bin": [
+    "assets",
+    "cat.js",
+    "clear.js",
+    "echo.js",
+    "edit.js",
+    "help.js",
+    "ls.js",
+    "reboot.js",
+    "rm.js",
+    "shutdown.js"
+  ],
+  "/bin/assets": [
+    "files.json"
+  ],
+  "/fonts": [
+    "DroidSansMono.ttf"
+  ]
+}
