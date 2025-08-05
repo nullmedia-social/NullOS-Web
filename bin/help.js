@@ -12,6 +12,7 @@ export default function(args, outputLine) {
     cd [dir]: changes the current directory to the specified one
     edit [file path]: opens the specified file in the editor
     rm [file path]: deletes the specified file
-    tee [file path] [file content]: writes the content to the specified file`
+    tee [file path] [file content]: writes the content to the specified file
+    nullweb: takes you back to NullWeb`
 	);
 }
