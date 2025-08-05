@@ -1,19 +1,47 @@
-export default async function(args, outputLine, virtualFS, saveVirtualFS) {
-    const filename = args[0];
-    if (!filename) {
-        outputLine('edit: missing filename');
-        return;
-    }
+export default async function(args, outputLine, virtualFS, saveVirtualFS, currentDir, setCurrentDir, setInputInterceptor) {
+	const fileArg = args[0];
+	if (!fileArg) {
+		outputLine('edit: missing filename');
+		return;
+	}
 
-    const content = args.slice(1).join(' ') || '';
+	// Normalize path
+	function normalizePath(base, path) {
+		if (path.startsWith('/')) return path;
+		const baseParts = base === '/' ? [] : base.slice(1).split('/');
+		const pathParts = path.split('/');
+		const parts = [...baseParts];
 
-    if (!virtualFS) {
-        outputLine('edit: virtual file system not available');
-        return;
-    }
+		for (const part of pathParts) {
+			if (part === '' || part === '.') continue;
+			else if (part === '..') parts.pop();
+			else parts.push(part);
+		}
+		return '/' + parts.join('/');
+	}
 
-    virtualFS[filename] = content;
-    saveVirtualFS();
+	const fullPath = normalizePath(currentDir, fileArg);
 
-    outputLine(`File '${filename}' saved.`);
+	let lines = [];
+	if (virtualFS[fullPath]) {
+		lines = virtualFS[fullPath].split('\n');
+	}
+
+	outputLine(`Editing '${fullPath}' (type ".save" to save, ".exit" to cancel):`);
+	lines.forEach(line => outputLine(line));
+
+	setInputInterceptor(input => {
+		if (input === '.save') {
+			virtualFS[fullPath] = lines.join('\n');
+			saveVirtualFS();
+			outputLine(`File '${fullPath}' saved.`);
+			return false; // stop intercepting
+		} else if (input === '.exit') {
+			outputLine(`Exited without saving '${fullPath}'.`);
+			return false; // stop intercepting
+		} else {
+			lines.push(input);
+			return true; // keep intercepting
+		}
+	});
 }

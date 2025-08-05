@@ -7,21 +7,23 @@ document.addEventListener('DOMContentLoaded', () => {
 	let commandHistory = [];
 	let historyIndex = -1;
 
-	// Load virtualFS from localStorage or start empty
 	const virtualFS = JSON.parse(localStorage.getItem('virtualFS') || '{}');
 	function saveVirtualFS() {
 		localStorage.setItem('virtualFS', JSON.stringify(virtualFS));
 	}
 
-	// Setter for currentDir that updates variable and localStorage
 	function setCurrentDir(newDir) {
 		currentDir = newDir;
+	}
+
+	let inputInterceptor = null;
+	function setInputInterceptor(handler) {
+		inputInterceptor = handler;
 	}
 
 	function updateCaretPos() {
 		const sel = window.getSelection();
 		if (!sel.rangeCount) return;
-
 		const range = sel.getRangeAt(0);
 		const pos = range.startOffset;
 		terminalInput.style.setProperty('--caret-pos', pos);
@@ -42,24 +44,30 @@ document.addEventListener('DOMContentLoaded', () => {
 		commandHistory.push(cmd);
 		historyIndex = commandHistory.length;
 
-		// Show input line with current directory in prompt
 		const inputLine = document.createElement('div');
 		inputLine.innerHTML = `<span class="prompt">root@nullos:${currentDir}$</span> ${cmd}`;
 		output.appendChild(inputLine);
 
-		// Try to load and run command module, pass virtualFS, saveVirtualFS, currentDir, and setCurrentDir
 		try {
 			const module = await import(`./bin/${cmdName}.js`);
 			if (typeof module.default === 'function') {
-				await module.default(args, cmdOutput, virtualFS, saveVirtualFS, currentDir, setCurrentDir);
+				await module.default(
+					args,
+					cmdOutput,
+					virtualFS,
+					saveVirtualFS,
+					currentDir,
+					setCurrentDir,
+					setInputInterceptor
+				);
 			} else {
 				cmdOutput(`Error: ${cmdName} is not executable`);
 			}
 		} catch (err) {
 			cmdOutput(`Error: command not found: ${cmdName}`);
 		}
-		prompt.textContent = `root@nullos:${currentDir}$`;
 
+		prompt.textContent = `root@nullos:${currentDir}$`;
 		terminalInput.textContent = '';
 		updateCaretPos();
 	}
@@ -71,7 +79,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
 		if (e.key === 'Enter') {
 			e.preventDefault();
-			runCmd(terminalInput.textContent);
+			const input = terminalInput.textContent;
+
+			if (inputInterceptor) {
+				const shouldContinue = inputInterceptor(input);
+				if (!shouldContinue) inputInterceptor = null;
+				terminalInput.textContent = '';
+				updateCaretPos();
+				return;
+			}
+
+			runCmd(input);
 		} else if (e.key === 'ArrowUp') {
 			if (commandHistory.length === 0) return;
 			e.preventDefault();

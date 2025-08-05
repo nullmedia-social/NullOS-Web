@@ -1,5 +1,4 @@
 export default async function(args, outputLine, virtualFS, saveVirtualFS, currentDir) {
-  // Normalize a path from currentDir + arg
   function normalizePath(base, path) {
     if (!path) return base;
     if (path.startsWith('/')) return path;
@@ -26,22 +25,19 @@ export default async function(args, outputLine, virtualFS, saveVirtualFS, curren
     const realFiles = fileTree[targetDir] || [];
 
     // Get virtual entries under targetDir
-    const virtualPaths = Object.keys(virtualFS);
-
-    const filteredVirtualPaths = virtualPaths.filter(p => {
-      const normalized = p.startsWith('/') ? p : '/' + p;
-      return normalized.startsWith(targetDir === '/' ? '/' : targetDir + '/');
-    });
-
     const virtualEntriesSet = new Set();
-    for (const p of filteredVirtualPaths) {
-      let relative = p.slice(targetDir.length);
-      if (relative.startsWith('/')) relative = relative.slice(1);
-      const firstPart = relative.split('/')[0];
+    for (const path in virtualFS) {
+      const normPath = path.startsWith('/') ? path : '/' + path;
+
+      if (!normPath.startsWith(targetDir.endsWith('/') ? targetDir : targetDir + '/')) continue;
+
+      const relativePath = normPath.slice(targetDir.length);
+      const trimmed = relativePath.startsWith('/') ? relativePath.slice(1) : relativePath;
+
+      const firstPart = trimmed.split('/')[0];
       if (firstPart) virtualEntriesSet.add(firstPart);
     }
 
-    // Merge and dedupe real and virtual
     const combinedSet = new Set([...realFiles, ...virtualEntriesSet]);
     const combined = Array.from(combinedSet).sort();
 

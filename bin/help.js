@@ -1,3 +1,3 @@
 export default function(args, outputLine) {
-	outputLine("Available commands:\n  echo\n  help\n  clear\n  cat\n  reboot\n  shutdown");
+	outputLine("Available commands:\n    echo [message]: repeats the message\n    help: lists available commands (you would know...right?)\n    clear: clears the terminal history\n    cat [file path]: reads the file specified\n    reboot: reboots the system\n    shutdown [ms]: shuts down the system in the specified time\n    ls [dir]: lists files in the specified directory\n    cd [dir]: changes the current directory to the specified one\n    edit [file path]: opens the specified file in the editor\n    rm [file path]: deletes the specified file\n    tee [file path] [file content]: writes the content to the specified file");
 }
