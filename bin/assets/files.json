@@ -13,13 +13,16 @@
     "cat.js",
     "cd.js",
     "clear.js",
+    "download.js",
     "echo.js",
     "edit.js",
     "help.js",
     "ls.js",
     "reboot.js",
     "rm.js",
-    "shutdown.js"
+    "shutdown.js",
+    "tee.js",
+    "clearvfs.js"
   ],
   "/bin/assets": [
     "files.json"
