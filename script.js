@@ -49,7 +49,7 @@ document.addEventListener('DOMContentLoaded', () => {
 		output.appendChild(inputLine);
 
 		try {
-			// Try to import command module from /bin/
+			// Try to import from real /bin folder (server)
 			const module = await import(`./bin/${cmdName}.js`);
 			if (typeof module.default === 'function') {
 				await module.default(
@@ -65,34 +65,49 @@ document.addEventListener('DOMContentLoaded', () => {
 				cmdOutput(`Error: ${cmdName} is not executable`);
 			}
 		} catch (err) {
-			// If import failed, check if virtualFS has the command as code string
-			if (virtualFS[cmdName]) {
-				try {
-					// Evaluate the virtualFS command code as a module function
-					// Expect the code string in virtualFS[cmdName] to export default async function(args, outputLine, virtualFS, saveVirtualFS, currentDir, setCurrentDir, setInputInterceptor)
-					const code = virtualFS[cmdName];
-					// Wrap code as module, eval it, then run default export function
-					const moduleFunc = new Function('exports', 'module', code + '\nreturn module.exports.default;');
-					const exports = {};
-					const moduleObj = { exports };
-					const commandFunc = moduleFunc(exports, moduleObj);
-					if (typeof commandFunc === 'function') {
-						await commandFunc(
-							args,
-							cmdOutput,
-							virtualFS,
-							saveVirtualFS,
-							currentDir,
-							setCurrentDir,
-							setInputInterceptor
-						);
-					} else {
-						cmdOutput(`Error: virtual command '${cmdName}' is not executable`);
+			// Failed to import real file, try virtualFS
+			const cmdPathBase = currentDir === '/' ? '' : currentDir;
+			const virtualCmdKeys = [
+				`${currentDir}/${cmdName}`,
+				`${currentDir}/${cmdName}.js`,
+				`/bin/${cmdName}`,
+				`/bin/${cmdName}.js`,
+				`/${cmdName}`,
+				`/${cmdName}.js`
+			];
+
+			let foundVirtualCmd = false;
+
+			for (const key of virtualCmdKeys) {
+				if (virtualFS[key]) {
+					foundVirtualCmd = true;
+					try {
+						const virtualCode = virtualFS[key];
+						const blob = new Blob([virtualCode], { type: 'application/javascript' });
+						const url = URL.createObjectURL(blob);
+						const module = await import(url);
+						if (typeof module.default === 'function') {
+							await module.default(
+								args,
+								cmdOutput,
+								virtualFS,
+								saveVirtualFS,
+								currentDir,
+								setCurrentDir,
+								setInputInterceptor
+							);
+						} else {
+							cmdOutput(`Error: ${cmdName} (virtual) is not executable`);
+						}
+						URL.revokeObjectURL(url);
+					} catch (virtualErr) {
+						cmdOutput(`Error running virtual command: ${virtualErr.message}`);
 					}
-				} catch (e) {
-					cmdOutput(`Error executing virtual command '${cmdName}': ${e.message}`);
+					break;
 				}
-			} else {
+			}
+
+			if (!foundVirtualCmd) {
 				cmdOutput(`Error: command not found: ${cmdName}`);
 			}
 		}
