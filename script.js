@@ -49,6 +49,7 @@ document.addEventListener('DOMContentLoaded', () => {
 		output.appendChild(inputLine);
 
 		try {
+			// Try to import command module from /bin/
 			const module = await import(`./bin/${cmdName}.js`);
 			if (typeof module.default === 'function') {
 				await module.default(
@@ -64,7 +65,36 @@ document.addEventListener('DOMContentLoaded', () => {
 				cmdOutput(`Error: ${cmdName} is not executable`);
 			}
 		} catch (err) {
-			cmdOutput(`Error: command not found: ${cmdName}`);
+			// If import failed, check if virtualFS has the command as code string
+			if (virtualFS[cmdName]) {
+				try {
+					// Evaluate the virtualFS command code as a module function
+					// Expect the code string in virtualFS[cmdName] to export default async function(args, outputLine, virtualFS, saveVirtualFS, currentDir, setCurrentDir, setInputInterceptor)
+					const code = virtualFS[cmdName];
+					// Wrap code as module, eval it, then run default export function
+					const moduleFunc = new Function('exports', 'module', code + '\nreturn module.exports.default;');
+					const exports = {};
+					const moduleObj = { exports };
+					const commandFunc = moduleFunc(exports, moduleObj);
+					if (typeof commandFunc === 'function') {
+						await commandFunc(
+							args,
+							cmdOutput,
+							virtualFS,
+							saveVirtualFS,
+							currentDir,
+							setCurrentDir,
+							setInputInterceptor
+						);
+					} else {
+						cmdOutput(`Error: virtual command '${cmdName}' is not executable`);
+					}
+				} catch (e) {
+					cmdOutput(`Error executing virtual command '${cmdName}': ${e.message}`);
+				}
+			} else {
+				cmdOutput(`Error: command not found: ${cmdName}`);
+			}
 		}
 
 		prompt.textContent = `root@nullos:${currentDir}$`;
