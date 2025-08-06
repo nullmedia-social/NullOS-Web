@@ -12,6 +12,14 @@ document.addEventListener('DOMContentLoaded', () => {
 		localStorage.setItem('virtualFS', JSON.stringify(virtualFS));
 	}
 
+	const aliasMap = JSON.parse(localStorage.getItem('aliasMap') || '{}');
+	function saveAliasMap() {
+		localStorage.setItem('aliasMap', JSON.stringify(aliasMap));
+	}
+	function resolveAlias(cmdName) {
+		return aliasMap[cmdName] || cmdName;
+	}
+
 	function setCurrentDir(newDir) {
 		currentDir = newDir;
 	}
@@ -40,6 +48,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 		const cleanCmd = cmd.trim();
 		const [cmdName, ...args] = cleanCmd.split(' ');
+		const resolvedCmdName = resolveAlias(cmdName);
 
 		commandHistory.push(cmd);
 		historyIndex = commandHistory.length;
@@ -50,7 +59,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 		try {
 			// Try to import from real /bin folder (server)
-			const module = await import(`./bin/${cmdName}.js`);
+			const module = await import(`./bin/${resolvedCmdName}.js`);
 			if (typeof module.default === 'function') {
 				await module.default(
 					args,
@@ -59,21 +68,23 @@ document.addEventListener('DOMContentLoaded', () => {
 					saveVirtualFS,
 					currentDir,
 					setCurrentDir,
-					setInputInterceptor
+					setInputInterceptor,
+					aliasMap,
+					saveAliasMap
 				);
 			} else {
-				cmdOutput(`Error: ${cmdName} is not executable`);
+				cmdOutput(`Error: ${resolvedCmdName} is not executable`);
 			}
 		} catch (err) {
 			// Failed to import real file, try virtualFS
 			const cmdPathBase = currentDir === '/' ? '' : currentDir;
 			const virtualCmdKeys = [
-				`${currentDir}/${cmdName}`,
-				`${currentDir}/${cmdName}.js`,
-				`/bin/${cmdName}`,
-				`/bin/${cmdName}.js`,
-				`/${cmdName}`,
-				`/${cmdName}.js`
+				`${currentDir}/${resolvedCmdName}`,
+				`${currentDir}/${resolvedCmdName}.js`,
+				`/bin/${resolvedCmdName}`,
+				`/bin/${resolvedCmdName}.js`,
+				`/${resolvedCmdName}`,
+				`/${resolvedCmdName}.js`
 			];
 
 			let foundVirtualCmd = false;
@@ -94,10 +105,12 @@ document.addEventListener('DOMContentLoaded', () => {
 								saveVirtualFS,
 								currentDir,
 								setCurrentDir,
-								setInputInterceptor
+								setInputInterceptor,
+								aliasMap,
+								saveAliasMap
 							);
 						} else {
-							cmdOutput(`Error: ${cmdName} (virtual) is not executable`);
+							cmdOutput(`Error: ${resolvedCmdName} (virtual) is not executable`);
 						}
 						URL.revokeObjectURL(url);
 					} catch (virtualErr) {
