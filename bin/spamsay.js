@@ -1,9 +1,9 @@
 export default function(args, outputLine) {
   const message = args.join(' ') || 'HEY EVERY !! IT\'S ME!! SPAMTON G. SPAMTON!';
   outputLine(`${message}
-                  \\
-                    \\
-                      \\
+\\
+ \\
+  \\
                         \\`);
   outputLine(`⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣀⣤
 ⠀⠀⠀⠀⠀⠀⠀⠀⠀⣀⣤⣶⣶⣶⣶⣶⣶⣶⣶⣶⣶⣶⣶⣶⣶⣶⣶⣶⣶⣶⣶⣶⣶⣶⣶⣶⣶⣶⣶⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⠟⠁
