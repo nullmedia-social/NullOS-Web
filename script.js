@@ -17,8 +17,13 @@ document.addEventListener('DOMContentLoaded', () => {
 		localStorage.setItem('aliasMap', JSON.stringify(aliasMap));
 	}
 
-	function resolveAlias(cmdName) {
-		return aliasMap[cmdName] || cmdName;
+	function resolveAlias(tokens) {
+		if (tokens.length === 0) return tokens;
+		const [first, ...rest] = tokens;
+		if (aliasMap[first]) {
+			return [...aliasMap[first], ...rest];
+		}
+		return tokens;
 	}
 
 	function setCurrentDir(newDir) {
@@ -38,6 +43,37 @@ document.addEventListener('DOMContentLoaded', () => {
 		terminalInput.style.setProperty('--caret-pos', pos);
 	}
 
+	// ✨ NEW: Argument splitter with quote support
+	function splitArgs(input) {
+		const args = [];
+		let current = '';
+		let inQuotes = false;
+		let quoteChar = '';
+
+		for (let i = 0; i < input.length; i++) {
+			const char = input[i];
+
+			if ((char === '"' || char === "'") && !inQuotes) {
+				inQuotes = true;
+				quoteChar = char;
+			} else if (char === quoteChar && inQuotes) {
+				inQuotes = false;
+				quoteChar = '';
+			} else if (char === ' ' && !inQuotes) {
+				if (current.length > 0) {
+					args.push(current);
+					current = '';
+				}
+			} else {
+				current += char;
+			}
+		}
+		if (current.length > 0) {
+			args.push(current);
+		}
+		return args;
+	}
+
 	async function runCmd(cmd) {
 		if (!cmd.trim()) return;
 
@@ -48,8 +84,9 @@ document.addEventListener('DOMContentLoaded', () => {
 		}
 
 		const cleanCmd = cmd.trim();
-		const [rawCmdName, ...args] = cleanCmd.split(' ');
-		const cmdName = resolveAlias(rawCmdName);
+		const inputTokens = splitArgs(cleanCmd); // 🧠 use our smart parser here
+		const resolvedTokens = resolveAlias(inputTokens);
+		const [cmdName, ...args] = resolvedTokens;
 
 		commandHistory.push(cmd);
 		historyIndex = commandHistory.length;
@@ -59,7 +96,6 @@ document.addEventListener('DOMContentLoaded', () => {
 		output.appendChild(inputLine);
 
 		try {
-			// Try to import real command
 			const module = await import(`./bin/${cmdName}.js`);
 			if (typeof module.default === 'function') {
 				await module.default(
@@ -77,7 +113,6 @@ document.addEventListener('DOMContentLoaded', () => {
 				cmdOutput(`Error: ${cmdName} is not executable`);
 			}
 		} catch (err) {
-			// Try from virtualFS
 			const possiblePaths = [
 				`${currentDir}/${cmdName}`,
 				`${currentDir}/${cmdName}.js`,
@@ -120,7 +155,7 @@ document.addEventListener('DOMContentLoaded', () => {
 			}
 
 			if (!found) {
-				cmdOutput(`Error: command not found: ${rawCmdName}`);
+				cmdOutput(`Error: command not found: ${cmdName}`);
 			}
 		}
 

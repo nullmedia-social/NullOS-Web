@@ -9,20 +9,35 @@
     "fonts"
   ],
   "/bin": [
+    "alias.js",
     "assets",
     "cat.js",
     "cd.js",
     "clear.js",
+    "clearvfs.js",
+    "cp.js",
+    "diff.js",
     "download.js",
     "echo.js",
     "edit.js",
+    "file.js",
     "help.js",
+    "js.js",
     "ls.js",
+    "mkdir.js",
+    "mv.js",
+    "nsh.js",
     "reboot.js",
+    "rmalias.js",
+    "rmdir.js",
     "rm.js",
     "shutdown.js",
+    "spam.js",
+    "spamsay.js",
     "tee.js",
-    "clearvfs.js"
+    "touch.js",
+    "wc.js",
+    "which.js"
   ],
   "/bin/assets": [
     "files.json"
