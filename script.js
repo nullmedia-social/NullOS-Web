@@ -4,6 +4,14 @@ document.addEventListener('DOMContentLoaded', () => {
 	const terminalInput = document.getElementById('terminalInput');
 	const output = document.getElementById('output');
 
+	if (localStorage.getItem('noEscape') === 'true') {
+		window.onclose = () => {
+			alert("You cannot close this window! You are trapped in NullOS!");
+			window.open("./nullos.html");
+			return false;
+		};
+	}
+
 	let commandHistory = [];
 	let historyIndex = -1;
 
@@ -76,6 +84,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 	async function runCmd(cmd) {
 		if (!cmd.trim()) return;
+		if (cmd.trim().startsWith('#')) return;
 
 		function cmdOutput(text) {
 			const line = document.createElement('div');
