@@ -16,6 +16,7 @@ document.addEventListener('DOMContentLoaded', () => {
 	function saveAliasMap() {
 		localStorage.setItem('aliasMap', JSON.stringify(aliasMap));
 	}
+
 	function resolveAlias(cmdName) {
 		return aliasMap[cmdName] || cmdName;
 	}
@@ -47,8 +48,8 @@ document.addEventListener('DOMContentLoaded', () => {
 		}
 
 		const cleanCmd = cmd.trim();
-		const [cmdName, ...args] = cleanCmd.split(' ');
-		const resolvedCmdName = resolveAlias(cmdName);
+		const [rawCmdName, ...args] = cleanCmd.split(' ');
+		const cmdName = resolveAlias(rawCmdName);
 
 		commandHistory.push(cmd);
 		historyIndex = commandHistory.length;
@@ -58,8 +59,8 @@ document.addEventListener('DOMContentLoaded', () => {
 		output.appendChild(inputLine);
 
 		try {
-			// Try to import from real /bin folder (server)
-			const module = await import(`./bin/${resolvedCmdName}.js`);
+			// Try to import real command
+			const module = await import(`./bin/${cmdName}.js`);
 			if (typeof module.default === 'function') {
 				await module.default(
 					args,
@@ -73,28 +74,26 @@ document.addEventListener('DOMContentLoaded', () => {
 					saveAliasMap
 				);
 			} else {
-				cmdOutput(`Error: ${resolvedCmdName} is not executable`);
+				cmdOutput(`Error: ${cmdName} is not executable`);
 			}
 		} catch (err) {
-			// Failed to import real file, try virtualFS
-			const cmdPathBase = currentDir === '/' ? '' : currentDir;
-			const virtualCmdKeys = [
-				`${currentDir}/${resolvedCmdName}`,
-				`${currentDir}/${resolvedCmdName}.js`,
-				`/bin/${resolvedCmdName}`,
-				`/bin/${resolvedCmdName}.js`,
-				`/${resolvedCmdName}`,
-				`/${resolvedCmdName}.js`
+			// Try from virtualFS
+			const possiblePaths = [
+				`${currentDir}/${cmdName}`,
+				`${currentDir}/${cmdName}.js`,
+				`/bin/${cmdName}`,
+				`/bin/${cmdName}.js`,
+				`/${cmdName}`,
+				`/${cmdName}.js`
 			];
 
-			let foundVirtualCmd = false;
+			let found = false;
 
-			for (const key of virtualCmdKeys) {
+			for (const key of possiblePaths) {
 				if (virtualFS[key]) {
-					foundVirtualCmd = true;
+					found = true;
 					try {
-						const virtualCode = virtualFS[key];
-						const blob = new Blob([virtualCode], { type: 'application/javascript' });
+						const blob = new Blob([virtualFS[key]], { type: 'application/javascript' });
 						const url = URL.createObjectURL(blob);
 						const module = await import(url);
 						if (typeof module.default === 'function') {
@@ -110,7 +109,7 @@ document.addEventListener('DOMContentLoaded', () => {
 								saveAliasMap
 							);
 						} else {
-							cmdOutput(`Error: ${resolvedCmdName} (virtual) is not executable`);
+							cmdOutput(`Error: ${cmdName} (virtual) is not executable`);
 						}
 						URL.revokeObjectURL(url);
 					} catch (virtualErr) {
@@ -120,8 +119,8 @@ document.addEventListener('DOMContentLoaded', () => {
 				}
 			}
 
-			if (!foundVirtualCmd) {
-				cmdOutput(`Error: command not found: ${cmdName}`);
+			if (!found) {
+				cmdOutput(`Error: command not found: ${rawCmdName}`);
 			}
 		}
 
@@ -165,8 +164,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 	function placeCaretAtEnd(el) {
 		el.focus();
-		if (typeof window.getSelection != "undefined"
-			&& typeof document.createRange != "undefined") {
+		if (typeof window.getSelection != "undefined" && typeof document.createRange != "undefined") {
 			const range = document.createRange();
 			range.selectNodeContents(el);
 			range.collapse(false);
