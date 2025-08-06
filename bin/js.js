@@ -6,10 +6,10 @@ export default async function(args, outputLine) {
   }
 
   try {
-    // Use Function constructor instead of eval for slightly safer sandboxing
-    const func = new Function(`return (${code})`);
-    const result = func();
-    outputLine(String(result));
+    const result = eval(code);
+    if (result !== undefined) {
+      outputLine(String(result));
+    }
   } catch (e) {
     outputLine(`Error: ${e.message}`);
   }

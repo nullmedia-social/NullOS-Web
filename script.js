@@ -84,9 +84,21 @@ document.addEventListener('DOMContentLoaded', () => {
 		}
 
 		const cleanCmd = cmd.trim();
-		const inputTokens = splitArgs(cleanCmd); // 🧠 use our smart parser here
-		const resolvedTokens = resolveAlias(inputTokens);
-		const [cmdName, ...args] = resolvedTokens;
+		let inputTokens = splitArgs(cleanCmd);
+		let cmdName = inputTokens[0];
+		let args;
+
+		if (cmdName === 'js') {
+			// For js command, take everything after 'js' as one argument (raw code string)
+			const codeStartIndex = cleanCmd.indexOf(' ') + 1;
+			const codeString = codeStartIndex > 0 ? cleanCmd.slice(codeStartIndex).trim() : '';
+			args = [codeString];
+		} else {
+			// Otherwise normal splitting + alias resolving
+			const resolvedTokens = resolveAlias(inputTokens);
+			cmdName = resolvedTokens[0];
+			args = resolvedTokens.slice(1);
+		}
 
 		commandHistory.push(cmd);
 		historyIndex = commandHistory.length;
