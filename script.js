@@ -25,6 +25,8 @@ document.addEventListener('DOMContentLoaded', () => {
 		localStorage.setItem('aliasMap', JSON.stringify(aliasMap));
 	}
 
+	const envVars = {}; // In-memory environment variables (reset on reload)
+
 	function resolveAlias(tokens) {
 		if (tokens.length === 0) return tokens;
 		const [first, ...rest] = tokens;
@@ -82,17 +84,90 @@ document.addEventListener('DOMContentLoaded', () => {
 		return args;
 	}
 
-	async function runCmd(cmd) {
-		if (!cmd.trim()) return;
-		if (cmd.trim().startsWith('#')) return;
+	// Expand $VAR and $(cmd) substitutions (simple)
+	async function expandVariablesAndSubstitutions(input) {
+		// Expand $VAR variables
+		input = input.replace(/\$([a-zA-Z_][a-zA-Z0-9_]*)/g, (match, v) => {
+			return envVars[v] !== undefined ? envVars[v] : '';
+		});
 
-		function cmdOutput(text) {
+		// Helper: run a command and capture its output text as a string
+		async function runCommandCaptureOutput(cmdString) {
+			let outputText = '';
+			function captureOutput(text) {
+				outputText += text + '\n';
+			}
+			// Run command, await completion
+			await runCmdCapture(cmdString, captureOutput);
+			return outputText.trim();
+		}
+
+		// RunCmd that uses the above captureOutput, only for internal use here:
+		async function runCmdCapture(cmd, captureOutputFn) {
+			cmd = cmd.trim();
+			if (!cmd) return;
+			if (cmd.startsWith('#')) return; // comment
+
+			// For simplicity, no alias resolving or variable expanding inside $(...) to avoid recursion nightmare
+			const tokens = splitArgs(cmd);
+			const cmdName = tokens[0];
+			const args = tokens.slice(1);
+
+			try {
+				const module = await import(`./bin/${cmdName}.js`);
+				if (typeof module.default === 'function') {
+					await module.default(args, captureOutputFn, virtualFS, saveVirtualFS, currentDir, setCurrentDir, setInputInterceptor, aliasMap, saveAliasMap, envVars);
+				}
+			} catch {
+				// silently ignore errors in command substitution
+			}
+		}
+
+		// Now expand all $(...) occurrences with their command output, await all
+		const regex = /\$\(([^)]+)\)/g;
+
+		let match;
+		let lastIndex = 0;
+		let result = '';
+
+		while ((match = regex.exec(input)) !== null) {
+			result += input.slice(lastIndex, match.index);
+			const cmdInside = match[1];
+			const output = await runCommandCaptureOutput(cmdInside);
+			result += output;
+			lastIndex = regex.lastIndex;
+		}
+		result += input.slice(lastIndex);
+
+		return result;
+	}
+	
+	async function runCmd(cmd) {
+		cmd = cmd.trim();
+		if (!cmd) return;
+		if (cmd.startsWith('#')) return; // comment line
+
+		function outputLine(text) {
 			const line = document.createElement('div');
 			line.textContent = text;
 			output.appendChild(line);
 		}
 
-		const cleanCmd = cmd.trim();
+		// Check inline variable assignment: $VAR="value" or $VAR='value' or $VAR=value
+		const varAssignRegex = /^\$([a-zA-Z_][a-zA-Z0-9_]*)=(["']?)(.*?)\2$/;
+		const varMatch = cmd.match(varAssignRegex);
+		if (varMatch) {
+			const varName = varMatch[1];
+			const varValue = varMatch[3];
+			envVars[varName] = varValue;
+			outputLine(`Variable ${varName} set to '${varValue}'`);
+			return;
+		}
+
+		// Expand variables and substitutions
+		cmd = await expandVariablesAndSubstitutions(cmd);
+
+		const cleanCmd = cmd;
 		let inputTokens = splitArgs(cleanCmd);
 		let cmdName = inputTokens[0];
 		let args;
@@ -121,17 +196,18 @@ document.addEventListener('DOMContentLoaded', () => {
 			if (typeof module.default === 'function') {
 				await module.default(
 					args,
-					cmdOutput,
+					outputLine,
 					virtualFS,
 					saveVirtualFS,
 					currentDir,
 					setCurrentDir,
 					setInputInterceptor,
 					aliasMap,
-					saveAliasMap
+					saveAliasMap,
+					envVars
 				);
 			} else {
-				cmdOutput(`Error: ${cmdName} is not executable`);
+				outputLine(`Error: ${cmdName} is not executable`);
 			}
 		} catch (err) {
 			const possiblePaths = [
@@ -155,34 +231,36 @@ document.addEventListener('DOMContentLoaded', () => {
 						if (typeof module.default === 'function') {
 							await module.default(
 								args,
-								cmdOutput,
+								outputLine,
 								virtualFS,
 								saveVirtualFS,
 								currentDir,
 								setCurrentDir,
 								setInputInterceptor,
 								aliasMap,
-								saveAliasMap
+								saveAliasMap,
+								envVars
 							);
 						} else {
-							cmdOutput(`Error: ${cmdName} (virtual) is not executable`);
+							outputLine(`Error: ${cmdName} (virtual) is not executable`);
 						}
 						URL.revokeObjectURL(url);
 					} catch (virtualErr) {
-						cmdOutput(`Error running virtual command: ${virtualErr.message}`);
+						outputLine(`Error running virtual command: ${virtualErr.message}`);
 					}
 					break;
 				}
 			}
 
 			if (!found) {
-				cmdOutput(`Error: command not found: ${cmdName}`);
+				outputLine(`Error: command not found: ${cmdName}`);
 			}
 		}
 
 		prompt.textContent = `root@nullos:${currentDir}$`;
 		terminalInput.textContent = '';
 		updateCaretPos();
+		window.scrollTo(0, document.body.scrollHeight);
 	}
 
 	terminalInput.addEventListener('input', updateCaretPos);
